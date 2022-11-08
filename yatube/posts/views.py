@@ -164,12 +164,12 @@ def follow_index(request: HttpRequest) -> HttpResponse:
     подписках текущего пользователя.
     """
     page_obj = paginate(
-                request,
-                Post.objects.filter(
-                    author__following__user=request.user,
-                ),
-                settings.LIMIT_POSTS,
-                )
+        request,
+        Post.objects.filter(
+            author__following__user=request.user,
+        ),
+        settings.LIMIT_POSTS,
+    )
     return render(request, 'posts/follow.html', {'page_obj': page_obj})
 
 
