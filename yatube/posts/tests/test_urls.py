@@ -1,7 +1,8 @@
+from http import HTTPStatus
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase
-from http import HTTPStatus
 from mixer.backend.django import mixer
 
 from posts.models import Group, Post
@@ -45,7 +46,7 @@ class PostURLTests(TestCase):
             ('/create/', 'posts/create_post.html'),
             (cls.post_edit_url, 'posts/create_post.html'),
         )
-        
+
     def setUp(self):
         cache.clear()
 
@@ -80,7 +81,7 @@ class PostURLTests(TestCase):
                     f'пользователя на {name}',
                 )
 
-    def test_private_pages_for_authorized_url_exists(self):
+    def test_auth_private_pages_url_exists(self):
         """
         Проверка что все приватные страницы доступны
         для авторизованного пользователя.
@@ -96,8 +97,7 @@ class PostURLTests(TestCase):
                     f'Ошибка: {name} для {self.client} не доступен',
                 )
 
-    
-    def test_private_urls_uses_correct_template(self):
+    def test_private_urls_uses_correct_templates(self):
         """
         Проверка url-адреса требующие авторизации
         используют соответствующий шаблон.
@@ -112,7 +112,7 @@ class PostURLTests(TestCase):
                     f'Ошибка: {url} ожидал шаблон {name}',
                 )
 
-    def test_public_urls_uses_correct_template(self):
+    def test_public_urls_uses_correct_templates(self):
         """
         Проверка общедоступные url-адреса используют
         соответствующий шаблон.

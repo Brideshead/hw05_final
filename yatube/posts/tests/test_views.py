@@ -28,10 +28,6 @@ class PostViewTests(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """
-        Создаём тестовую запись в БД
-        и сохраняем созданную запись в качестве переменной класса.
-        """
         super().setUpClass()
         cls.user = User.objects.create_user(username='test_author')
         cls.group = mixer.blend(Group)
@@ -90,7 +86,7 @@ class PostViewTests(TestCase):
             cls.index_url,
             cls.group_list_url,
             cls.profile_url,
-        )   
+        )
 
     def setUp(self):
         cache.clear()
@@ -116,7 +112,7 @@ class PostViewTests(TestCase):
                 response = self.authorized_client_author.get(reverse_name)
                 error_name = f'Ошибка: {reverse_name} ожидал шаблон {template}'
                 self.assertTemplateUsed(response, template, error_name)
-                 
+
     def test_index_page_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
         response = self.authorized_client_author.get(reverse('posts:index'))
@@ -138,7 +134,7 @@ class PostViewTests(TestCase):
     def test_profile_show_correct_context(self):
         """Шаблон profile сформирован с правильным контекстом."""
         response = self.authorized_client_author.get(
-            reverse('posts:profile', args=(self.user.username,))
+            reverse('posts:profile', args=(self.user.username,)),
         )
         post = response.context['page_obj'][
             self.NUMBER_OF_CONTEXT
@@ -161,7 +157,7 @@ class PostViewTests(TestCase):
             'post').author, self.post.author)
         self.assertEqual(response.context.get(
             'post').group, self.post.group)
-        self.assertEqual(response.context.get('post').image, self.post.image)    
+        self.assertEqual(response.context.get('post').image, self.post.image)
 
     def test_create_post_show_correct_context(self):
         """
@@ -236,9 +232,9 @@ class PostViewTests(TestCase):
                 self.assertNotEqual(post, group_test_slug)
 
     def test_cache_index_page(self):
-        """Проверка работы кеша"""
+        """Проверка работы кеша."""
         post = Post.objects.create(
-            text='Пост под кеш',
+            text='пост под кеш',
             author=self.user)
         content_add = self.authorized_client_author.get(
             reverse('posts:index')).content
@@ -249,7 +245,7 @@ class PostViewTests(TestCase):
         cache.clear()
         content_cache_clear = self.authorized_client_author.get(
             reverse('posts:index')).content
-        self.assertNotEqual(content_add, content_cache_clear)    
+        self.assertNotEqual(content_add, content_cache_clear)
 
 class PaginatorViewsTest(TestCase):
     """
@@ -307,17 +303,22 @@ class PaginatorViewsTest(TestCase):
                 )
 
 class FollowViewsTest(TestCase):
+    """
+    Устанавливаем данные для тестирования работы
+    view-функции отвечающих за работу системы подписки.
+    """
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.post_autor = User.objects.create(
-            username='post_autor',
+            username='post_author',
         )
         cls.post_follower = User.objects.create(
             username='post_follower',
         )
         cls.post = Post.objects.create(
-            text='Подпишись на меня',
+            text='подпишись на меня',
             author=cls.post_autor,
         )
         cls.client_author = Client()
@@ -356,7 +357,7 @@ class FollowViewsTest(TestCase):
         """Проверка записей у тех кто подписан."""
         post = Post.objects.create(
             author=self.post_autor,
-            text='Подпишись на меня')
+            text='подпишись на меня')
         Follow.objects.create(
             user=self.post_follower,
             author=self.post_autor)
@@ -368,7 +369,7 @@ class FollowViewsTest(TestCase):
         """Проверка записей у тех кто не подписан."""
         post = Post.objects.create(
             author=self.post_autor,
-            text='Подпишись на меня')
+            text='подпишись на меня')
         response = self.client_author.get(
             reverse('posts:follow_index'))
         self.assertNotIn(post, response.context['page_obj'].object_list)

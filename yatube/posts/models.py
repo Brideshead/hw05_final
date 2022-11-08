@@ -60,7 +60,7 @@ class Post(models.Model):
         'картинка',
         upload_to='posts/',
         blank=True,
-    )  
+    )
 
     class Meta:
         ordering = ('-pub_date',)
@@ -76,7 +76,19 @@ class Post(models.Model):
 class Comment(models.Model):
     """
     Модель для хранения комментариев.
+
+    post: данные о посте, установлена связь с таблицей Post,
+    при удалении из таблицы Post поста,
+    также будут удалены все связанные комментарии.
+    author: автор статьи, установлена связь с таблицей User,
+    при удалении из таблицы User автора,
+    также будут удалены все связанные комментарии.
+    text: текст комменатария.
+    created: дата создания комментария.
+    updated: дата обновления комментария.
+    active: статус комментария.
     """
+
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
@@ -111,9 +123,21 @@ class Comment(models.Model):
         verbose_name = 'комментарий'
 
     def __str__(self):
-        return self.text[:15]
+        return self.text[:settings.LENGTH_POST]
+
 
 class Follow(models.Model):
+    """
+    Модель для хранения данных о подписках.
+
+    user: данные о пользователе, установлена связь с таблицей User,
+    при удалении из таблицы User пользователя,
+    также будут удалены все связанные подписки.
+    author: автор статьи, установлена связь с таблицей User,
+    при удалении из таблицы User автора,
+    также будут удалены все связанные подписки.
+    """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -133,5 +157,3 @@ class Follow(models.Model):
 
     def __str__(self):
         return f'{self.user} подписался на {self.author}'
-
-        

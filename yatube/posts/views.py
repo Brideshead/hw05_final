@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
 
 from core.utils import paginate
-from posts.forms import PostForm, CommentForm
+from posts.forms import CommentForm, PostForm
 from posts.models import Follow, Group, Post, User
 
 
@@ -28,6 +28,7 @@ def index(request: HttpRequest) -> HttpResponse:
             'page_obj': page_obj,
         },
     )
+
 
 def group_posts(request: HttpRequest, slug: str) -> HttpResponse:
     """
@@ -88,6 +89,7 @@ def post_detail(request: HttpRequest, post_id: int) -> HttpResponse:
         },
     )
 
+
 @login_required
 def post_create(request: HttpRequest) -> HttpResponse:
     """
@@ -105,7 +107,7 @@ def post_create(request: HttpRequest) -> HttpResponse:
             request,
             'posts/create_post.html',
             {
-                'form': form, 
+                'form': form,
                 'is_edit': False,
             },
         )
@@ -126,7 +128,7 @@ def post_edit(request: HttpRequest, post_id: int) -> HttpResponse:
         return redirect('posts:post_detail', post_id)
 
     form = PostForm(
-        request.POST or None, 
+        request.POST or None,
         files=request.FILES or None,
         instance=post,
     )
@@ -139,7 +141,11 @@ def post_edit(request: HttpRequest, post_id: int) -> HttpResponse:
     )
 
 @login_required
-def add_comment(request, post_id):
+def add_comment(request: HttpRequest, post_id: int) -> HttpResponse:
+    """
+    Отрисовка страницы для добавления комментария к посту.
+    Комментарий может оставлять только авторизованный пользователь.
+    """
     post = get_object_or_404(Post, id=post_id)
     form = CommentForm(request.POST or None)
     if form.is_valid():
@@ -150,7 +156,11 @@ def add_comment(request, post_id):
     return redirect('posts:post_detail', post_id)
 
 @login_required
-def follow_index(request):
+def follow_index(request: HttpRequest) -> HttpResponse:
+    """
+    Отрисовка страницы куда будут выведены информация о
+    подписках текущего пользователя.
+    """
     page_obj = paginate(
         request,
         Post.objects.filter(
@@ -161,7 +171,10 @@ def follow_index(request):
 
 
 @login_required
-def profile_follow(request, username):
+def profile_follow(request: HttpRequest, username: str) -> HttpResponse:
+    """
+    Подписаться на автора в его профиле.
+    """
     author = get_object_or_404(User, username=username)
     if author != request.user:
         Follow.objects.get_or_create(user=request.user, author=author)
@@ -169,11 +182,14 @@ def profile_follow(request, username):
 
 
 @login_required
-def profile_unfollow(request, username):
+def profile_unfollow(request: HttpRequest, username: str) -> HttpResponse:
+    """
+    Отписаться  от автора в его профиле.
+    """
     user_follower = get_object_or_404(
         Follow,
         user=request.user,
-        author__username=username
+        author__username=username,
     )
     user_follower.delete()
     return redirect('posts:profile', username)

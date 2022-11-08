@@ -1,14 +1,13 @@
 import shutil
-import tempfile
+from http import HTTPStatus
+
 from django.contrib.auth import get_user_model
-from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from http import HTTPStatus
 from mixer.backend.django import mixer
 
-from posts.models import Group, Post, Comment
+from posts.models import Comment, Group, Post
 
 User = get_user_model()
 
@@ -41,9 +40,9 @@ class PostFormTests(TestCase):
         super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
-    def test_auth_user_create_post_ok(self): 
+    def test_auth_user_create_post_ok(self):
         """Проверка создания поста для авторизованного пользователя."""
-        posts_count = Post.objects.count() 
+        posts_count = Post.objects.count()
         self.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x01\x00'
             b'\x01\x00\x00\x00\x00\x21\xf9\x04'
@@ -56,26 +55,26 @@ class PostFormTests(TestCase):
             content=self.small_gif,
             content_type='image/gif',
         )
-        response = self.client_author.post( 
-            reverse('posts:post_create'), 
-            { 
-                'text': 'Тестовый пост', 
-                'group': self.group.pk, 
+        response = self.client_author.post(
+            reverse('posts:post_create'),
+            {
+                'text': 'Тестовый пост',
+                'group': self.group.pk,
                 'image': self.uploaded,
-            }, 
-            follow=True, 
-        ) 
-        self.assertRedirects( 
-            response, 
-            reverse( 
-                'posts:profile', 
-                args=(self.user.username,), 
-            ), 
-        ) 
-        self.assertEqual(response.status_code, HTTPStatus.OK) 
-        self.assertEqual(Post.objects.count(), posts_count + 1) 
-        self.assertEqual(Post.objects.latest('pk').text, 'Тестовый пост') 
-        self.assertEqual(Post.objects.latest('pk').author, self.user) 
+            },
+            follow=True,
+        )
+        self.assertRedirects(
+            response,
+            reverse(
+                'posts:profile',
+                args=(self.user.username,),
+            ),
+        )
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(Post.objects.count(), posts_count + 1)
+        self.assertEqual(Post.objects.latest('pk').text, 'Тестовый пост')
+        self.assertEqual(Post.objects.latest('pk').author, self.user)
         self.assertEqual(Post.objects.latest('pk').group.pk, self.group.pk)
         self.assertEqual(Post.objects.latest('pk').image, 'posts/small.gif')
 
@@ -120,7 +119,7 @@ class PostFormTests(TestCase):
         self.assertTrue(comment.author == self.user)
         self.assertTrue(comment.pk == post.pk)
         self.assertRedirects(
-            response, 
+            response,
             reverse('posts:post_detail', args=(post.pk,)),
         )
 
@@ -143,15 +142,15 @@ class PostFormTests(TestCase):
             'posts:add_comment', args=(post.pk,))
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(Comment.objects.count(), comments_count)
-        self.assertRedirects(response, redirect)    
+        self.assertRedirects(response, redirect)
 
     def test_auth_user_edit_post_ok(self):
         """Проверка редактирования записи авторизированным клиентом."""
-        post = mixer.blend( 
+        post = mixer.blend(
             'posts.Post',
             text='Отредактированный текст поста',
             author=self.user,
-        ) 
+        )
         response = self.client_author.post(
             reverse(
                 'posts:post_edit',

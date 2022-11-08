@@ -32,8 +32,13 @@ class PostModelTest(TestCase):
         self.assertEqual(str(self.group), self.group.title)
 
     def test_model_post_first_15_symbols(self):
-        """Проверяем, первые 15 символов выводимые для модели Post в __str__."""
-        self.assertEqual(str(self.post)[:settings.LENGTH_POST], self.post.text)
+        """
+        Проверяем, первые 15 символов выводимые для модели Post в __str__.
+        """
+        self.assertEqual(
+            str(self.post)[:settings.LENGTH_POST],
+            self.post.text,
+        )
 
 
 class GroupModelTest(TestCase):
@@ -49,11 +54,11 @@ class GroupModelTest(TestCase):
         """
         super().setUpClass()
         cls.user = User.objects.create_user(username='test_author')
-        cls.group = Group.objects.create( 
-            title='test_title', 
-            slug='test_slug', 
-            description='test_description', 
-        ) 
+        cls.group = Group.objects.create(
+            title='test_title',
+            slug='test_slug',
+            description='test_description',
+        )
         cls.post = Post.objects.create(
             author=cls.user,
             text='test_text',
@@ -64,5 +69,10 @@ class GroupModelTest(TestCase):
         self.assertEqual(str(self.group), self.group.title)
 
     def test_model_group_first_15_symbols(self):
-        """Проверяем, первые 15 символов выводимые для модели Group в __str__."""
-        self.assertEqual(str(self.group.title)[:settings.TITLE_LENGTH_RETURN], self.group.title)
+        """
+        Проверяем, первые 15 символов выводимые для модели Group в __str__.
+        """
+        self.assertEqual(
+            str(self.group.title)[:settings.TITLE_LENGTH_RETURN],
+            self.group.title,
+        )

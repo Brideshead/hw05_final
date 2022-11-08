@@ -4,8 +4,10 @@ from django.test import Client, TestCase
 
 
 class ViewTestClass(TestCase):
-    def setUp(self):
-        self.client = Client()
+    @classmethod
+    def setUpClass(cls: TestCase):
+        super().setUpClass()
+        cls.client = Client()
 
     def test_error_page(self):
         """Проверка что страница 404 отдаёт кастомный шаблон."""
