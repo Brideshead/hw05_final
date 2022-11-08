@@ -247,6 +247,7 @@ class PostViewTests(TestCase):
             reverse('posts:index')).content
         self.assertNotEqual(content_add, content_cache_clear)
 
+
 class PaginatorViewsTest(TestCase):
     """
     Тестирование паджинации.
@@ -301,6 +302,7 @@ class PaginatorViewsTest(TestCase):
                     f'Ошибка: Пагинатор не выводит на вторую страницу'
                     f'{template} 5 постов',
                 )
+
 
 class FollowViewsTest(TestCase):
     """
