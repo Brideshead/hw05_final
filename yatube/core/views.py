@@ -24,9 +24,7 @@ def page_not_found(request: HttpRequest, exception) -> HttpResponseNotFound:
 
 
 def permission_denied(
-    request: HttpRequest,
-    *args: tuple,
-    ) -> HttpResponseForbidden:
+        request: HttpRequest, *args: tuple) -> HttpResponseForbidden:
     """Вывод шаблона с 403 в случае если страница не найдена."""
     return render(
         request,

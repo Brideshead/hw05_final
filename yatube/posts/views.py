@@ -21,9 +21,9 @@ def index(request: HttpRequest) -> HttpResponse:
         'posts/index.html',
         {
             'page_obj': paginate(
-                        request,
-                        Post.objects.select_related('author', 'group'),
-                        settings.LIMIT_POSTS,
+                request,
+                Post.objects.select_related('author', 'group'),
+                settings.LIMIT_POSTS,
             ),
         },
     )
