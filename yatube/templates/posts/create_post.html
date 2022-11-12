@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}
   Новый пост
 {% endblock %}
@@ -16,7 +16,7 @@
               Новый пост
             {% endif %}
           </div>
-          <div class="card-body">
+            <div class="card-body">
               {% include "includes/forms/errors.html" %}
               <form method="post" action="
               {% if is_edit %}
@@ -37,7 +37,7 @@
                   {% endif %}
                 </button>
               </div>
-          </div>
+            </div>
         </div>
       </div>
     </div>

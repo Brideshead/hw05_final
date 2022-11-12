@@ -1,14 +1,13 @@
 import os
 
-LIMIT_POSTS = 10
-
-LENGTH_POST = 15
-
-TEXT_LENGTH_RETURN = 50
-
-TITLE_LENGTH_RETURN = 60
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+TEMP_MEDIA_ROOT = 'media/posts'
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100,
+}
 
 CACHES = {
     'default': {
@@ -100,6 +99,14 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+LIMIT_POSTS = 10
+
+LENGTH_POST = 15
+
+TEXT_LENGTH_RETURN = 50
+
+TITLE_LENGTH_RETURN = 60
 
 LOGIN_URL = 'users:login'
 

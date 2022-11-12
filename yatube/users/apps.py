@@ -2,8 +2,9 @@ from django.apps import AppConfig
 
 
 class UsersConfig(AppConfig):
-    """
-    Регистрация приложения users для управления
+    """Регистрация приложения users.
+
+    для управления
     личными данными пользователя.
     """
 

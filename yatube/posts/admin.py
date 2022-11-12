@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from core.admin import BaseAdmin
-from posts.models import Group, Post
+from posts.models import Comment, Follow, Group, Post
 
 
 @admin.register(Post)
@@ -23,7 +23,7 @@ class PostAdmin(BaseAdmin):
 
 
 @admin.register(Group)
-class GroupAdmin(admin.ModelAdmin):
+class GroupAdmin(BaseAdmin):
     """
     Настройки отображения модели 'Группы' в интерфейсе админки.
 
@@ -37,5 +37,19 @@ class GroupAdmin(admin.ModelAdmin):
 
     list_display = ('pk', 'title')
     list_editable = ('title',)
-    search_fields = ('pk',)
     list_filter = ('title',)
+    search_fields = ('pk',)
+
+
+@admin.register(Comment)
+class CommentAdmin(BaseAdmin):
+    list_display = ('post', 'author', 'text', 'pub_date', 'active')
+    list_filter = ('active', 'text', 'pub_date', 'updated')
+    search_fields = ('post', 'author', 'text')
+
+
+@admin.register(Follow)
+class FollowAdmin(BaseAdmin):
+    list_display = ('user', 'author')
+    list_filter = ('user', 'author')
+    search_fields = ('user', 'author')

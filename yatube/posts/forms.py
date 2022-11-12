@@ -4,9 +4,10 @@ from posts.models import Comment, Post
 
 
 class PostForm(forms.ModelForm):
-    """
-    Создание объекта, который передается в качестве
-    переменной form в контекст шаблона templates/create_post.html
+    """Создание объекта постформы.
+
+    Передается в качестве переменной form в
+    контекст шаблона templates/create_post.html
     """
 
     class Meta:

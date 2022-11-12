@@ -4,9 +4,9 @@ register = template.Library()
 
 
 @register.filter
-def addclass(field: str, css: None) -> None:
-    """
-    Пользовательский фильтр для добавления класса к входным данным.
+def addclass(field: str, css: None) -> None:  # не понимаю аннотацию
+    """Пользовательский фильтр для добавления класса к входным данным.
+
     Позволяет стилизовать выбранную форму.
     """
     return field.as_widget(

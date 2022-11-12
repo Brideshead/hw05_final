@@ -5,9 +5,7 @@ from users.forms import CreationForm
 
 
 class SignUp(CreateView):
-    """
-    Перенаправление пользователя после успешной регистрации.
-    """
+    """Перенаправление п-ля после успешной регистрации."""
 
     form_class = CreationForm
     success_url = reverse_lazy('posts:index')

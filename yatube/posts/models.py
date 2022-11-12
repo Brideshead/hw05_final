@@ -22,6 +22,8 @@ class Group(models.Model):
         return self.title[:settings.TITLE_LENGTH_RETURN]
 
 
+# не могу взять данные из core.models Setinfo
+# у меня летят миграции и валится пайтест
 class Post(models.Model):
     """
     Модель для хранения статей.
@@ -41,7 +43,8 @@ class Post(models.Model):
         help_text='Введите текст поста',
     )
     pub_date = models.DateTimeField(
-        verbose_name='дата публикации', auto_now_add=True,
+        verbose_name='дата публикации',
+        auto_now_add=True,
     )
     author = models.ForeignKey(
         User,
@@ -67,9 +70,7 @@ class Post(models.Model):
         default_related_name = 'posts'
 
     def __str__(self) -> str:
-        """
-        Возвращает в консоль сокращенный текст поста.
-        """
+        """Возвращает в консоль сокращенный текст поста."""
         return self.text[:settings.TEXT_LENGTH_RETURN]
 
 
@@ -92,24 +93,23 @@ class Comment(models.Model):
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name='comments',
         verbose_name='пост',
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='comments',
         verbose_name='автор',
     )
     text = models.TextField(
-        verbose_name='комментарий',
+        'текст',
+        help_text='Введите текст',
     )
-    created = models.DateTimeField(
+    pub_date = models.DateTimeField(
         auto_now_add=True,
         verbose_name='создан',
     )
     updated = models.DateTimeField(
-        auto_now=True,
+        auto_now_add=True,
         verbose_name='обновлен',
     )
     active = models.BooleanField(
@@ -118,11 +118,12 @@ class Comment(models.Model):
     )
 
     class Meta:
-        ordering = ('-created',)
+        default_related_name = 'comments'
+        ordering = ('-pub_date',)
         verbose_name_plural = 'комментарии'
         verbose_name = 'комментарий'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.text[:settings.LENGTH_POST]
 
 
@@ -155,5 +156,5 @@ class Follow(models.Model):
         verbose_name_plural = 'подписки'
         verbose_name = 'подписка'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.user} подписался на {self.author}'

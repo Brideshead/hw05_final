@@ -5,9 +5,7 @@ User = get_user_model()
 
 
 class CreationForm(UserCreationForm):
-    """
-    Класс для формы регистрации.
-    """
+    """Класс для формы регистрации."""
 
     class Meta:
         model = User

@@ -9,93 +9,90 @@ from posts.forms import CommentForm, PostForm
 from posts.models import Follow, Group, Post, User
 
 
-@cache_page(20)
+@cache_page(20, key_prefix='index_page')
 def index(request: HttpRequest) -> HttpResponse:
-    """
-    Отрисовка главной страницы с 10 последними статьями.
+    """Отрисовка главной страницы с 10 последними статьями.
+
     Принимает WSGIRequest и возвращает подготовленную
     html страницу с данными.
     """
-    page_obj = paginate(
-        request,
-        Post.objects.select_related('author', 'group'),
-        settings.LIMIT_POSTS,
-    )
     return render(
         request,
         'posts/index.html',
         {
-            'page_obj': page_obj,
+            'page_obj': paginate(
+                        request,
+                        Post.objects.select_related('author', 'group'),
+                        settings.LIMIT_POSTS,
+            ),
         },
     )
 
 
 def group_posts(request: HttpRequest, slug: str) -> HttpResponse:
-    """
-    Отрисовка страницы группы с 10 последними статьями данной группы.
+    """Отрисовка страницы группы с 10 последними статьями данной группы.
+
     Принимает WSGIRequest, наименование группы в формате slug
     и возвращает подготовленную html страницу с данными.
     """
-    group = get_object_or_404(Group, slug=slug)
-    page_obj = paginate(
-        request,
-        group.posts.select_related('group'),
-        settings.LIMIT_POSTS,
-    )
     return render(
         request,
         'posts/group_list.html',
         {
-            'group': group, 'page_obj': page_obj,
+            'group': get_object_or_404(Group, slug=slug),
+            'page_obj': paginate(
+                request,
+                get_object_or_404(
+                    Group,
+                    slug=slug,
+                ).posts.select_related('group'),
+                settings.LIMIT_POSTS,
+            ),
         },
     )
 
 
 def profile(request: HttpRequest, username: str) -> HttpResponse:
+    """Отрисовка страницы профиля пользователя.
+
+    С информацией обо всех постах данного пользователя.
     """
-    Отрисовка страницы профиля пользователя с информацией
-    обо всех постах данного пользователя.
-    """
-    author = get_object_or_404(User, username=username)
-    page_obj = paginate(
-        request,
-        author.posts.select_related('author'),
-        settings.LIMIT_POSTS,
-    )
     return render(
         request,
         'posts/profile.html',
         {
-            'page_obj': page_obj,
-            'author': author,
+            'page_obj': paginate(
+                request,
+                get_object_or_404(
+                    User,
+                    username=username,
+                ).posts.select_related('author'),
+                settings.LIMIT_POSTS,
+            ),
+            'author': get_object_or_404(User, username=username),
         },
     )
 
 
-def post_detail(request: HttpRequest, post_id: int) -> HttpResponse:
-    """
-    Отрисовка страницы с описанием конкретного выбранного поста.
-    """
-    post = get_object_or_404(Post, pk=post_id)
-    comments = post.comments.all()
-    form = CommentForm()
+def post_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    """Отрисовка страницы с описанием конкретного выбранного поста."""
     return render(
         request,
         'posts/post_detail.html',
         {
-            'post': post,
-            'comments': comments,
-            'form': form,
+            'post': get_object_or_404(Post, pk=pk),
+            'form': CommentForm(),
         },
     )
 
 
 @login_required
 def post_create(request: HttpRequest) -> HttpResponse:
-    """
-    Отрисовка страницы с окном создания поста.
+    """Отрисовка страницы с окном создания поста.
+
     Можно указать текст поста и выбрать группу,
     к которой данный пост будет относиться.
+
     Посты могут создавать только авторизованные пользователи.
     """
     form = PostForm(
@@ -117,15 +114,15 @@ def post_create(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def post_edit(request: HttpRequest, post_id: int) -> HttpResponse:
-    """
-    Отрисовка страницы для редактирования уже созданного поста.
+def post_edit(request: HttpRequest, pk: int) -> HttpResponse:
+    """Отрисовка страницы для редактирования уже созданного поста.
+
     Пост может редактировать только авторизованный пользователь.
     Редактировать можно только свои посты.
     """
-    post = get_object_or_404(Post, pk=post_id)
+    post = get_object_or_404(Post, pk=pk)
     if post.author != request.user:
-        return redirect('posts:post_detail', post_id)
+        return redirect('posts:post_detail', pk)
 
     form = PostForm(
         request.POST or None,
@@ -134,7 +131,7 @@ def post_edit(request: HttpRequest, post_id: int) -> HttpResponse:
     )
     if form.is_valid():
         form.save()
-        return redirect('posts:post_detail', post_id)
+        return redirect('posts:post_detail', pk)
 
     return render(
         request, 'posts/create_post.html', {'form': form, 'is_edit': True},
@@ -142,42 +139,42 @@ def post_edit(request: HttpRequest, post_id: int) -> HttpResponse:
 
 
 @login_required
-def add_comment(request: HttpRequest, post_id: int) -> HttpResponse:
+def add_comment(request: HttpRequest, pk: int) -> HttpResponse:
+    """Отрисовка страницы для добавления комментария к посту.
+
+    Комментарий может оставлять только
+    авторизованный пользователь.
     """
-    Отрисовка страницы для добавления комментария к посту.
-    Комментарий может оставлять только авторизованный пользователь.
-    """
-    post = get_object_or_404(Post, id=post_id)
+    post = get_object_or_404(Post, pk=pk)
     form = CommentForm(request.POST or None)
     if form.is_valid():
-        comment = form.save(commit=False)
-        comment.author = request.user
-        comment.post = post
-        comment.save()
-    return redirect('posts:post_detail', post_id)
+        form.instance.author = request.user
+        form.instance.post = post
+        form.save()
+    return redirect('posts:post_detail', pk)
 
 
 @login_required
 def follow_index(request: HttpRequest) -> HttpResponse:
-    """
-    Отрисовка страницы куда будут выведены информация о
-    подписках текущего пользователя.
-    """
-    page_obj = paginate(
+    """Отрисовка страницы c инф. о подписках текущего пользователя."""
+    return render(
         request,
-        Post.objects.filter(
-            author__following__user=request.user,
-        ),
-        settings.LIMIT_POSTS,
+        'posts/follow.html',
+        {
+            'page_obj': paginate(
+                request,
+                Post.objects.filter(
+                    author__following__user=request.user,
+                ),
+                settings.LIMIT_POSTS,
+            ),
+        },
     )
-    return render(request, 'posts/follow.html', {'page_obj': page_obj})
 
 
 @login_required
 def profile_follow(request: HttpRequest, username: str) -> HttpResponse:
-    """
-    Подписаться на автора в его профиле.
-    """
+    """Подписаться на автора в его профиле."""
     author = get_object_or_404(User, username=username)
     if author != request.user:
         Follow.objects.get_or_create(user=request.user, author=author)
@@ -186,13 +183,10 @@ def profile_follow(request: HttpRequest, username: str) -> HttpResponse:
 
 @login_required
 def profile_unfollow(request: HttpRequest, username: str) -> HttpResponse:
-    """
-    Отписаться  от автора в его профиле.
-    """
-    user_follower = get_object_or_404(
+    """Отписаться  от автора в его профиле."""
+    get_object_or_404(
         Follow,
         user=request.user,
         author__username=username,
-    )
-    user_follower.delete()
+    ).delete()
     return redirect('posts:profile', username)
