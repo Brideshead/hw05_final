@@ -4,13 +4,12 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from mixer.backend.django import mixer
-from PIL import Image
 
 from posts.models import Follow, Group, Post
-from posts.tests.common import image
 
 User = get_user_model()
 
@@ -35,19 +34,25 @@ class PostViewTests(TestCase):
         cls.client = Client()
 
         cls.user = User.objects.create_user(username='test_author')
-        cls.client.force_login(cls.user)
 
         cls.group = mixer.blend(Group)
-        cls.small_gif = Image.new(
-            'RGBA',
-            size=(50, 50),
-            color=(155, 0, 0),
+        cls.small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=cls.small_gif,
+            content_type='image/gif',
         )
         cls.post = Post.objects.create(
             text='test_text',
             group=cls.group,
             author=cls.user,
-            image=image('small.gif'),
+            image=cls.uploaded,
         )
 
     def setUp(self):
@@ -60,6 +65,7 @@ class PostViewTests(TestCase):
 
     def test_index_page_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
+        self.client.force_login(self.user)
         response = self.client.get(reverse('posts:index'))
         post = response.context['post']
         self.assertEqual(post.text, self.post.text)
@@ -68,6 +74,7 @@ class PostViewTests(TestCase):
 
     def test_group_list_page_show_correct_context(self):
         """Шаблон group_list сформирован с правильным контекстом."""
+        self.client.force_login(self.user)
         response = self.client.get(
             reverse('posts:group_list', args=(self.group.slug,)))
         post = response.context['page_obj'][0]
@@ -78,6 +85,7 @@ class PostViewTests(TestCase):
 
     def test_profile_show_correct_context(self):
         """Шаблон profile сформирован с правильным контекстом."""
+        self.client.force_login(self.user)
         response = self.client.get(
             reverse('posts:profile', args=(self.user.username,)),
         )
@@ -91,6 +99,7 @@ class PostViewTests(TestCase):
 
     def test_post_detail_show_correct_context(self):
         """Шаблон post_detail сформирован с правильным контекстом."""
+        self.client.force_login(self.user)
         response = self.client.get(
             reverse('posts:post_detail', args=(self.post.pk,)))
         self.assertEqual(response.context.get('post').pk, self.post.pk)
@@ -106,6 +115,7 @@ class PostViewTests(TestCase):
 
         Сформирован с правильным контекстом.
         """
+        self.client.force_login(self.user)
         response = self.client.get(
             reverse('posts:post_create'))
         form_fields = {
@@ -119,6 +129,7 @@ class PostViewTests(TestCase):
 
     def test_post_edit_show_correct_context(self):
         """Шаблон post_edit сформирован с правильным контекстом."""
+        self.client.force_login(self.user)
         response = self.client.get(
             reverse('posts:post_edit', args=(self.post.pk,)))
         form_fields = {
@@ -135,6 +146,7 @@ class PostViewTests(TestCase):
         test_user = User.objects.create_user(
             username='test_author_created_post',
         )
+        self.client.force_login(self.user)
         test_group = mixer.blend(Group)
         test_post = Post.objects.create(
             text='test_text_created_post',
@@ -164,7 +176,7 @@ class PostViewTests(TestCase):
                         args=(self.group.slug,),
                     ),
                 )
-                group_test_slug = response.context['page'][
+                group_test_slug = response.context['page_obj'][
                     self.NUMBER_OF_CONTEXT
                 ]
                 self.assertEqual(post, test_post)
@@ -172,6 +184,7 @@ class PostViewTests(TestCase):
 
     def test_cache_index_page(self):
         """Проверка работы кеша."""
+        self.client.force_login(self.user)
         post = Post.objects.create(
             text='пост под кеш',
             author=self.user)
@@ -255,17 +268,21 @@ class FollowViewsTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.client = Client()
-        cls.follower_client = Client()
-
-        cls.user = User.objects.create_user(
+        cls.post_author = User.objects.create(
             username='post_author',
         )
-        cls.post_follower = User.objects.create_user(
+        cls.post_follower = User.objects.create(
             username='post_follower',
         )
-        cls.client.force_login(cls.post_follower)
-        cls.follower_client.force_login(cls.user)
+        cls.post = Post.objects.create(
+            text='подпишись на меня',
+            author=cls.post_author,
+        )
+
+        cls.client_author = Client()
+        cls.follower_client = Client()
+        cls.client_author.force_login(cls.post_follower)
+        cls.follower_client.force_login(cls.post_author)
 
     def setUp(self):
         cache.clear()
@@ -281,12 +298,12 @@ class FollowViewsTest(TestCase):
         follow = Follow.objects.all().latest('id')
         self.assertEqual(Follow.objects.count(), 1)
         self.assertEqual(follow.author_id, self.post_follower.id)
-        self.assertEqual(follow.user_id, self.user.id)
+        self.assertEqual(follow.user_id, self.post_author.id)
 
     def test_unfollow_on_user(self):
         """Проверка отписки от пользователя."""
         Follow.objects.create(
-            user=self.user,
+            user=self.post_author,
             author=self.post_follower)
         self.follower_client.post(
             reverse(
@@ -299,19 +316,19 @@ class FollowViewsTest(TestCase):
     def test_follow_on_authors(self):
         """Проверка записей у тех кто подписан."""
         post = Post.objects.create(
-            author=self.post_autor,
+            author=self.post_author,
             text='подпишись на меня')
         Follow.objects.create(
             user=self.post_follower,
-            author=self.user)
-        response = self.client.get(
+            author=self.post_author)
+        response = self.client_author.get(
             reverse('posts:follow_index'))
         self.assertIn(post, response.context['page_obj'].object_list)
 
     def test_notfollow_on_authors(self):
         """Проверка записей у тех кто не подписан."""
         post = Post.objects.create(
-            author=self.user,
+            author=self.post_author,
             text='подпишись на меня')
         response = self.client_author.get(
             reverse('posts:follow_index'))

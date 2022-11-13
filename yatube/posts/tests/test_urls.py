@@ -26,6 +26,7 @@ class PostURLTests(TestCase):
         cls.client = Client()
 
         cls.user = User.objects.create_user(username='test_author')
+        cls.client.force_login(cls.user)
 
         cls.group = mixer.blend(Group)
         cls.post = Post.objects.create(
@@ -33,7 +34,6 @@ class PostURLTests(TestCase):
             text='test_text',
             group=cls.group,
         )
-        cls.client.force_login(cls.user)
         cls.group_list_url = f'/group/{cls.group.slug}/'
         cls.post_edit_url = f'/posts/{cls.post.pk}/edit/'
         cls.post_url = f'/posts/{cls.post.pk}/'
@@ -85,6 +85,7 @@ class PostURLTests(TestCase):
 
     def test_auth_private_pages_url_exists(self):
         """Проверка что все прив. страницы доступны для авт. пол-ля."""
+        self.client.force_login(self.user)
         for pages in self.private_urls:
             url, name = pages
             with self.subTest(url=url):
@@ -100,6 +101,7 @@ class PostURLTests(TestCase):
 
         Используют соответствующий шаблон.
         """
+        self.client.force_login(self.user)
         for pages in self.private_urls:
             url, name = pages
             with self.subTest(url=url):
