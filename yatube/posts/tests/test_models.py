@@ -15,7 +15,7 @@ class PostModelTest(TestCase):
 
         cls.post = mixer.blend(
             'posts.Post',
-            text = 'текст поста',
+            text='текст поста',
         )
 
     def test_model_post_have_correct_object_name(self):
