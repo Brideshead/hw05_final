@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.paginator import Page
 from django.db.models import fields
 from django.template.loader import select_template
+
 from tests.utils import get_field_from_context
 
 try:
