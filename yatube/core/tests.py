@@ -4,6 +4,8 @@ from django.test import Client, TestCase
 
 
 class ViewTestClass(TestCase):
+    """Класс для проверки вью функций отвечающих за серверные ошибки."""
+
     @classmethod
     def setUpClass(cls: TestCase):
         super().setUpClass()

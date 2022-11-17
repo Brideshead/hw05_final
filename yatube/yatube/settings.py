@@ -35,10 +35,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'about.apps.AboutConfig',
+    'behaviors.apps.BehaviorsConfig',
     'core.apps.CoreConfig',
     'posts.apps.PostsConfig',
-    'sorl.thumbnail',
     'users.apps.UsersConfig',
+
+    'sorl.thumbnail',
 ]
 
 MEDIA_URL = '/media/'
@@ -102,9 +104,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LIMIT_POSTS = 10
 
-LENGTH_POST = 15
+SHORT_TEXT_RETURN = 15
 
-TEXT_LENGTH_RETURN = 50
+TEXT_LENGTH_POST_RETURN = 50
 
 TITLE_LENGTH_RETURN = 60
 

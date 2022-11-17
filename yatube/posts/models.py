@@ -2,6 +2,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from core.models import TimestampedModel
+
 User = get_user_model()
 
 
@@ -19,38 +21,31 @@ class Group(models.Model):
     description = models.TextField('описание группы')
 
     def __str__(self) -> str:
-        return self.title[:settings.TITLE_LENGTH_RETURN]
+        """Возвращает в консоль сокращенное название группы."""
+        return (
+            self.title[:settings.TITLE_LENGTH_RETURN]
+            if len(self.title) > settings.TITLE_LENGTH_RETURN
+            else self.title
+        )
 
 
-# не могу взять данные из core.models Setinfo
-# у меня летят миграции и валится пайтест
-class Post(models.Model):
+class Post(TimestampedModel):
     """
     Модель для хранения статей.
 
-    text: текс статьи.
+    Наследует из TimestampedModel:
+    text: текст.
     pud_date: дата публикации статьи.
     author: автор статьи, установлена связь с таблицей User,
     при удалении из таблицы User автора,
     также будут удалены все связанные статьи.
+
+    Дополнительные поля:
     group: название сообщества, к которому относится статья,
     установлена связь с моделью Group, чтобы при добавлении
     новой записи можно было сослаться на данную модель.
     """
 
-    text = models.TextField(
-        'текст поста',
-        help_text='Введите текст поста',
-    )
-    pub_date = models.DateTimeField(
-        verbose_name='дата публикации',
-        auto_now_add=True,
-    )
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        verbose_name='автор',
-    )
     group = models.ForeignKey(
         Group,
         blank=True,
@@ -71,50 +66,34 @@ class Post(models.Model):
 
     def __str__(self) -> str:
         """Возвращает в консоль сокращенный текст поста."""
-        return self.text[:settings.TEXT_LENGTH_RETURN]
+        return (
+            self.text[:settings.TEXT_LENGTH_POST_RETURN]
+            if len(self.text) > settings.TEXT_LENGTH_POST_RETURN
+            else self.text
+        )
 
 
-class Comment(models.Model):
+class Comment(TimestampedModel):
     """
     Модель для хранения комментариев.
 
-    post: данные о посте, установлена связь с таблицей Post,
-    при удалении из таблицы Post поста,
-    также будут удалены все связанные комментарии.
+    Наследует из TimestampedModel:
+    text: текст.
+    pud_date: дата добавления комментария.
     author: автор статьи, установлена связь с таблицей User,
     при удалении из таблицы User автора,
     также будут удалены все связанные комментарии.
-    text: текст комменатария.
-    created: дата создания комментария.
-    updated: дата обновления комментария.
-    active: статус комментария.
+
+    Дополнительные поля:
+    post: данные о посте, установлена связь с таблицей Post,
+    при удалении из таблицы Post поста,
+    также будут удалены все связанные комментарии.
     """
 
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
         verbose_name='пост',
-    )
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        verbose_name='автор',
-    )
-    text = models.TextField(
-        'текст',
-        help_text='Введите текст',
-    )
-    pub_date = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='создан',
-    )
-    updated = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='обновлен',
-    )
-    active = models.BooleanField(
-        default=True,
-        verbose_name='активен',
     )
 
     class Meta:
@@ -124,7 +103,12 @@ class Comment(models.Model):
         verbose_name = 'комментарий'
 
     def __str__(self) -> str:
-        return self.text[:settings.LENGTH_POST]
+        """Возвращает в консоль сокращенный текст комментария."""
+        return (
+            self.text[:settings.SHORT_TEXT_RETURN]
+            if len(self.text) > settings.SHORT_TEXT_RETURN
+            else self.text
+        )
 
 
 class Follow(models.Model):
@@ -137,6 +121,8 @@ class Follow(models.Model):
     author: автор статьи, установлена связь с таблицей User,
     при удалении из таблицы User автора,
     также будут удалены все связанные подписки.
+    Пользователь не может подписывать на себя или
+    на одного того же автора два раза.
     """
 
     user = models.ForeignKey(
@@ -153,8 +139,19 @@ class Follow(models.Model):
     )
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                name='user_author_pair_unique',
+                fields=['user', 'author'],
+            ),
+            models.CheckConstraint(
+                name='user_prevent_self_follow',
+                check=~models.Q(author=models.F('user')),
+            ),
+        ]
         verbose_name_plural = 'подписки'
         verbose_name = 'подписка'
 
     def __str__(self) -> str:
+        """Возвращает в консоль текст о новом подписчике."""
         return f'{self.user} подписался на {self.author}'

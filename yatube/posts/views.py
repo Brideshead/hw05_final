@@ -57,19 +57,21 @@ def profile(request: HttpRequest, username: str) -> HttpResponse:
 
     С информацией обо всех постах данного пользователя.
     """
+    author = get_object_or_404(User, username=username)
+    following = request.user
+    if following:
+        following = author.following.filter(user=request.user).exists()
     return render(
         request,
         'posts/profile.html',
         {
             'page_obj': paginate(
                 request,
-                get_object_or_404(
-                    User,
-                    username=username,
-                ).posts.select_related('author'),
+                author.posts.select_related('author'),
                 settings.LIMIT_POSTS,
             ),
-            'author': get_object_or_404(User, username=username),
+            'author': author,
+            'following': following,
         },
     )
 
@@ -184,9 +186,8 @@ def profile_follow(request: HttpRequest, username: str) -> HttpResponse:
 @login_required
 def profile_unfollow(request: HttpRequest, username: str) -> HttpResponse:
     """Отписаться  от автора в его профиле."""
-    get_object_or_404(
-        Follow,
-        user=request.user,
-        author__username=username,
-    ).delete()
-    return redirect('posts:profile', username)
+    author = get_object_or_404(User, username=username)
+    is_follower = Follow.objects.filter(user=request.user, author=author)
+    if is_follower.exists():
+        is_follower.delete()
+    return redirect('posts:profile', username=author)

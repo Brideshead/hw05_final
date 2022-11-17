@@ -43,8 +43,8 @@ class GroupAdmin(BaseAdmin):
 
 @admin.register(Comment)
 class CommentAdmin(BaseAdmin):
-    list_display = ('post', 'author', 'text', 'pub_date', 'active')
-    list_filter = ('active', 'text', 'pub_date', 'updated')
+    list_display = ('post', 'author', 'text', 'pub_date')
+    list_filter = ('text', 'pub_date')
     search_fields = ('post', 'author', 'text')
 
 

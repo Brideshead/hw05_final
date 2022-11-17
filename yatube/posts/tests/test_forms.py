@@ -2,62 +2,64 @@ import shutil
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from mixer.backend.django import mixer
 
 from posts.models import Comment, Group, Post
+from posts.tests.common import image
 
 User = get_user_model()
 
 
 @override_settings(MEDIA_ROOT=settings.TEMP_MEDIA_ROOT)
 class PostFormTests(TestCase):
-    """Устанавливаем данные для тестирования posts/forms."""
+    """Тестирования posts/forms.
+
+    В данном тесте делаем проверки на:
+    Что автозированный пользователь может создать пост.
+    Что неавтозированный пользователь не может создать пост.
+    Что автозированный пользователь может создать коммент.
+    Что неавтозированный пользователь не может создать коммент.
+    Что автозированный пользователь-автор поста может редактировать пост.
+    Что пост не редактируется не автором поста.
+    Что неавтозированный пользователь не может редактировать пост.
+    """
 
     @classmethod
     def setUpClass(cls: TestCase):
-        """Создаём тестовую запись в БД.
+        """Создаём данные для тестов и логиним."""
 
-        Сохраняем созданную запись в качестве переменной класса.
-        """
         super().setUpClass()
 
-        cls.anon = Client()
-        cls.client = Client()
-
         cls.user = User.objects.create_user(username='test_author')
-        cls.client.force_login(cls.user)
-
+        cls.user_not_author = User.objects.create_user(username='no_author')
         cls.group = mixer.blend(Group)
+
+        cls.anon = Client()
+        cls.client_author = Client()
+        cls.client_not_author = Client()
+        cls.client_author.force_login(cls.user)
+        cls.client_not_author.force_login(cls.user_not_author)
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(settings.TEMP_MEDIA_ROOT, ignore_errors=True)
 
+    def setUp(self):
+        cache.clear()
+
     def test_auth_user_create_post_ok(self):
-        """Проверка создания поста для авторизованного пользователя."""
-        self.client.force_login(self.user)
-        self.small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x01\x00'
-            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
-            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
-            b'\x00\x00\x01\x00\x01\x00\x00\x02'
-            b'\x02\x4c\x01\x00\x3b'
-        )
-        self.uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=self.small_gif,
-            content_type='image/gif',
-        )
-        response = self.client.post(
+        """Проверка что авт. пользователь может создать пост."""
+        self.assertEqual(Post.objects.count(), 0)
+        response = self.client_author.post(
             reverse('posts:post_create'),
             {
                 'text': 'Тестовый пост',
-                'group': self.group.pk,
-                'image': self.uploaded,
+                'group': self.group.id,
+                'image': image(),
             },
             follow=True,
         )
@@ -68,63 +70,62 @@ class PostFormTests(TestCase):
                 args=(self.user.username,),
             ),
         )
-        post = Post.objects.latest('pk')
         self.assertEqual(Post.objects.count(), 1)
+        post = Post.objects.get()
         self.assertEqual(post.text, 'Тестовый пост')
         self.assertEqual(post.author, self.user)
-        self.assertEqual(post.group.pk, self.group.pk)
-        self.assertEqual(post.image, 'posts/small.gif')
+        self.assertEqual(post.group_id, self.group.id)
+        self.assertEqual(post.image, 'posts/giffy.gif')
 
-    def test_anon_cannot_create_post(self):
-        """Проверка создания записи не авторизированным пользователем."""
+    def test_anon_cannot_create_post_denied(self):
+        """Проверка что неавт. пользователь не может создать пост."""
         self.anon.post(
             reverse('posts:post_create'),
             {
                 'text': 'Тестовый пост',
-                'group': self.group.pk,
-                'author': self.anon,
+                'group': self.group.id,
             },
             follow=True,
         )
         self.assertEqual(Post.objects.count(), 0)
 
-    def test_auth_user_create_comment(self):
-        """Проверка создания комментария авторизированным пользователем."""
-        self.client.force_login(self.user)
-        post = Post.objects.create(
+    def test_auth_user_create_comment_ok(self):
+        """Проверка что авт. пользователь может создать коммент."""
+        post = mixer.blend(
+            'posts.Post',
             text='Текст поста для редактирования',
             author=self.user,
         )
-        response = self.client.post(
+        response = self.client_author.post(
             reverse(
                 'posts:add_comment',
-                args=(post.pk,),
+                args=(post.id,),
             ),
             {
                 'text': 'Тестовый комментарий',
             },
             follow=True,
         )
-        comment = Comment.objects.latest('id')
         self.assertEqual(Comment.objects.count(), 1)
+        comment = Comment.objects.get()
         self.assertEqual(comment.text, 'Тестовый комментарий')
         self.assertEqual(comment.author, self.user)
-        self.assertEqual(comment.pk, post.pk)
         self.assertRedirects(
             response,
-            reverse('posts:post_detail', args=(post.pk,)),
+            reverse('posts:post_detail', args=(post.id,)),
         )
 
-    def test_nonauth_user_create_comment(self):
-        """Проверка создания комментария не авторизированным пользователем."""
-        post = Post.objects.create(
+    def test_nonauth_user_create_comment_denied(self):
+        """Проверка что неавт. пользователь не может создать коммент."""
+        post = mixer.blend(
+            'posts.Post',
             text='Текст поста для редактирования',
             author=self.user,
         )
         self.anon.post(
             reverse(
                 'posts:add_comment',
-                args=(post.pk,)),
+                args=(post.id,)),
             {
                 'text': 'Тестовый комментарий',
             },
@@ -133,69 +134,71 @@ class PostFormTests(TestCase):
         self.assertEqual(Comment.objects.count(), 0)
 
     def test_user_post_author_edit_post_ok(self):
-        """Проверка редактирования записи авторизированным клиентом."""
-        self.small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x01\x00'
-            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
-            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
-            b'\x00\x00\x01\x00\x01\x00\x00\x02'
-            b'\x02\x4c\x01\x00\x3b'
-        )
-        self.uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=self.small_gif,
-            content_type='image/gif',
-        )
+        """Проверка что авт. пользов.-автор поста может редактировать пост."""
         post = mixer.blend(
             'posts.Post',
-            text='Отредактированный текст поста',
+            text='Текст поста',
             author=self.user,
         )
-        self.client.post(
+        self.client_author.post(
             reverse(
                 'posts:post_edit',
-                args=(post.pk,),
+                args=(post.id,),
             ),
             {
                 'text': 'Отредактированный текст поста',
-                'group': self.group.pk,
-                'image': self.uploaded,
+                'group': self.group.id,
+                'image': image(),
             },
             follow=True,
         )
+        post_changed = Post.objects.get()
         self.assertEqual(
-            post.text,
+            post_changed.text,
             'Отредактированный текст поста',
         )
-        self.assertEqual(post.image, 'posts/image.gif')
+        self.assertNotEqual('posts/giffy.gif', post.image)
+        self.assertEqual(post_changed.group_id, self.group.id)
 
-    def test_client_not_auth_cannot_edit(self):
+    def test_client_not_auth_edit_denied(self):
         """Проверка, что пост не редактируется не автором поста."""
-        post = Post.objects.create(
-            text='Текст поста для редактирования',
+        post = mixer.blend(
+            'posts.Post',
             author=self.user,
-            group=self.group,
         )
-        post = Post.objects.latest('pk')
-        self.assertNotEqual(post.text, 'Тестовый пост')
-        self.assertEqual(post.author, self.user)
-        self.assertEqual(post.group.pk, self.group.pk)
-
-    def test_anon_user_cannot_edit(self):
-        """Проверка редактирования поста неавторизованным пользователем."""
-        post = Post.objects.create(
-            text='Текст поста для редактирования',
-            author=self.user,
-            group=self.group,
-        )
-        response = self.anon.post(
+        self.client_not_author.post(
             reverse(
                 'posts:post_edit',
-                args=(post.pk,),
+                args=(post.id,),
+            ),
+            {
+                'text': 'Отредактированный текст поста',
+                'group': self.group.id,
+                'image': image(),
+            },
+            follow=True,
+        )
+        post_control = Post.objects.get()
+        self.assertEqual(post_control.text, post.text)
+        self.assertEqual(post_control.author, post.author)
+        self.assertEqual(post_control.group_id, post.group)
+        self.assertEqual(post_control.image, post.image)
+
+    def test_anon_user_edit_denied(self):
+        """Проверка что неавт. пользователь не может редактировать пост."""
+        post = mixer.blend(
+            'posts.Post',
+            text='Текст поста для редактирования',
+            author=self.user,
+            group=self.group,
+        )
+        self.anon.post(
+            reverse(
+                'posts:post_edit',
+                args=(post.id,),
             ),
             {
                 'text': 'Тестовый пост',
-                'group': self.group.pk,
             },
             follow=True,
         )
@@ -203,14 +206,4 @@ class PostFormTests(TestCase):
             post.text,
             'Текст поста для редактирования',
         )
-        self.assertEqual(post.group, self.group)
         self.assertEqual(post.author, self.user)
-        self.assertRedirects(
-            response,
-            reverse('login')
-            + '?next='
-            + reverse(
-                'posts:post_edit',
-                args=(post.pk,),
-            ),
-        )

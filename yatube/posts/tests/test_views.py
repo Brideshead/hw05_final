@@ -4,22 +4,20 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from mixer.backend.django import mixer
 
 from posts.models import Follow, Group, Post
+from posts.tests.common import image
 
 User = get_user_model()
 
-TEMP_MEDIA_ROOT = 'media/posts'
 
-
-@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=settings.TEMP_MEDIA_ROOT)
 class PostViewTests(TestCase):
     """
-    Устанавливаем данные для тестирования posts/forms.
+    Тестирование работы view-функций namespace posts.
 
     NUMBER_OF_CONTEXT: индекс извлекаемого контекстного значения.
     """
@@ -28,54 +26,41 @@ class PostViewTests(TestCase):
 
     @classmethod
     def setUpClass(cls):
+        """Создаём данные для тестов и логиним."""
         super().setUpClass()
 
-        cls.anon = Client()
-        cls.client = Client()
-
         cls.user = User.objects.create_user(username='test_author')
-
         cls.group = mixer.blend(Group)
-        cls.small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x01\x00'
-            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
-            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
-            b'\x00\x00\x01\x00\x01\x00\x00\x02'
-            b'\x02\x4c\x01\x00\x3b'
-        )
-        cls.uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=cls.small_gif,
-            content_type='image/gif',
-        )
         cls.post = Post.objects.create(
             text='test_text',
             group=cls.group,
             author=cls.user,
-            image=cls.uploaded,
+            image=image(),
         )
 
-    def setUp(self):
-        cache.clear()
+        cls.anon = Client()
+        cls.client_user = Client()
+        cls.client_user.force_login(cls.user)
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree(settings.TEMP_MEDIA_ROOT, ignore_errors=True)
+
+    def setUp(self):
+        cache.clear()
 
     def test_index_page_show_correct_context(self):
-        """Шаблон index сформирован с правильным контекстом."""
-        self.client.force_login(self.user)
-        response = self.client.get(reverse('posts:index'))
+        """Проверяем что шаблон index сформирован с правильным контекстом."""
+        response = self.client_user.get(reverse('posts:index'))
         post = response.context['post']
         self.assertEqual(post.text, self.post.text)
         self.assertEqual(str(post.group), self.group.title)
         self.assertEqual(post.image, self.post.image)
 
     def test_group_list_page_show_correct_context(self):
-        """Шаблон group_list сформирован с правильным контекстом."""
-        self.client.force_login(self.user)
-        response = self.client.get(
+        """Проверяем что шаблон group_list сформ. с правильным контекстом."""
+        response = self.client_user.get(
             reverse('posts:group_list', args=(self.group.slug,)))
         post = response.context['page_obj'][0]
         self.assertEqual(post.author, self.post.author)
@@ -84,9 +69,8 @@ class PostViewTests(TestCase):
         self.assertEqual(post.image, self.post.image)
 
     def test_profile_show_correct_context(self):
-        """Шаблон profile сформирован с правильным контекстом."""
-        self.client.force_login(self.user)
-        response = self.client.get(
+        """Проверяем что шаблон profile сформирован с правильным контекстом."""
+        response = self.client_user.get(
             reverse('posts:profile', args=(self.user.username,)),
         )
         post = response.context['page_obj'][
@@ -98,9 +82,8 @@ class PostViewTests(TestCase):
         self.assertEqual(post.image, self.post.image)
 
     def test_post_detail_show_correct_context(self):
-        """Шаблон post_detail сформирован с правильным контекстом."""
-        self.client.force_login(self.user)
-        response = self.client.get(
+        """Проверяем что шаблон post_detail сформ. с правильным контекстом."""
+        response = self.client_user.get(
             reverse('posts:post_detail', args=(self.post.pk,)))
         self.assertEqual(response.context.get('post').pk, self.post.pk)
         self.assertEqual(response.context.get('post').text, self.post.text)
@@ -111,12 +94,8 @@ class PostViewTests(TestCase):
         self.assertEqual(response.context.get('post').image, self.post.image)
 
     def test_create_post_show_correct_context(self):
-        """Проверка шаблона create_post для создания поста.
-
-        Сформирован с правильным контекстом.
-        """
-        self.client.force_login(self.user)
-        response = self.client.get(
+        """Проверяем что шаблон create_post сформ. с правильным контекстом."""
+        response = self.client_user.get(
             reverse('posts:post_create'))
         form_fields = {
             'text': forms.fields.CharField,
@@ -128,9 +107,8 @@ class PostViewTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_post_edit_show_correct_context(self):
-        """Шаблон post_edit сформирован с правильным контекстом."""
-        self.client.force_login(self.user)
-        response = self.client.get(
+        """Проверяем что шаблон post_edit сформ. с правильным контекстом."""
+        response = self.client_user.get(
             reverse('posts:post_edit', args=(self.post.pk,)))
         form_fields = {
             'text': forms.fields.CharField,
@@ -142,11 +120,10 @@ class PostViewTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_created_post_show_correct_context(self):
-        """Проверка отображения поста с правильным контекстом."""
+        """Проверка что пост отображается с правильным контекстом."""
         test_user = User.objects.create_user(
             username='test_author_created_post',
         )
-        self.client.force_login(self.user)
         test_group = mixer.blend(Group)
         test_post = Post.objects.create(
             text='test_text_created_post',
@@ -166,11 +143,11 @@ class PostViewTests(TestCase):
         )
         for name_page in list_page_name:
             with self.subTest(name_page=name_page):
-                response = self.client.get(name_page)
+                response = self.client_user.get(name_page)
                 post = response.context['page_obj'][
                     self.NUMBER_OF_CONTEXT
                 ]
-                response = self.client.get(
+                response = self.client_user.get(
                     reverse(
                         'posts:group_list',
                         args=(self.group.slug,),
@@ -184,18 +161,17 @@ class PostViewTests(TestCase):
 
     def test_cache_index_page(self):
         """Проверка работы кеша."""
-        self.client.force_login(self.user)
         post = Post.objects.create(
             text='пост под кеш',
             author=self.user)
-        content_add = self.client.get(
+        content_add = self.client_user.get(
             reverse('posts:index')).content
         post.delete()
-        content_delete = self.client.get(
+        content_delete = self.client_user.get(
             reverse('posts:index')).content
         self.assertEqual(content_add, content_delete)
         cache.clear()
-        content_cache_clear = self.client.get(
+        content_cache_clear = self.client_user.get(
             reverse('posts:index')).content
         self.assertNotEqual(content_add, content_cache_clear)
 
@@ -215,10 +191,12 @@ class PaginatorViewsTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
+        """Создаём данные для тестов и логиним."""
         super().setUpClass()
+
         cls.user = User.objects.create_user(username='test_author')
-        cls.anon = Client()
         cls.group = mixer.blend(Group)
+
         for cls.post_number in range(cls.NUMBER_OF_POSTS):
             cls.post_fill = Post.objects.create(
                 text=f'Пост {cls.post_number} в тесте!',
@@ -231,7 +209,11 @@ class PaginatorViewsTest(TestCase):
             ('posts:group_list', 'posts/group_list.html', (cls.group.slug,)),
         )
 
-    def setUp(self):
+        cls.anon = Client()
+        cls.client_auth = Client()
+        cls.client_auth.force_login(cls.user)
+
+    def setUP(self):
         cache.clear()
 
     def test_first_and_second_page_paginate_correct(self):
@@ -240,14 +222,14 @@ class PaginatorViewsTest(TestCase):
             name, template, arg = pages
             reverse_name = reverse(name, args=arg)
             with self.subTest(reverse_name=reverse_name):
-                response = self.anon.get(reverse_name)
+                response = self.client_auth.get(reverse_name)
                 self.assertEqual(
                     len(response.context['page_obj']),
                     settings.LIMIT_POSTS,
                     f'Ошибка: Пагинатор не выводит на первую страницу'
                     f'{template} 10 постов',
                 )
-                response = self.anon.get(reverse_name + '?page=2')
+                response = self.client_auth.get(reverse_name + '?page=2')
                 self.assertEqual(
                     len(response.context['page_obj']),
                     self.NUMBER_OF_POSTS_SECOND_PAGE,
@@ -257,21 +239,17 @@ class PaginatorViewsTest(TestCase):
 
 
 class FollowViewsTest(TestCase):
-    """Устанавливаем данные.
-
-    для тестирования работы
-
-    view-функции отвечающих за работу системы подписки.
-    """
+    """Тестирование view-функций отвечающих за работу подписки."""
 
     @classmethod
     def setUpClass(cls):
+        """Создаём данные для тестов и логиним."""
         super().setUpClass()
 
-        cls.post_author = User.objects.create(
+        cls.post_author = User.objects.create_user(
             username='post_author',
         )
-        cls.post_follower = User.objects.create(
+        cls.post_follower = User.objects.create_user(
             username='post_follower',
         )
         cls.post = Post.objects.create(
@@ -295,7 +273,7 @@ class FollowViewsTest(TestCase):
                 args=(self.post_follower,),
             ),
         )
-        follow = Follow.objects.all().latest('id')
+        follow = Follow.objects.get()
         self.assertEqual(Follow.objects.count(), 1)
         self.assertEqual(follow.author_id, self.post_follower.id)
         self.assertEqual(follow.user_id, self.post_author.id)
@@ -304,7 +282,8 @@ class FollowViewsTest(TestCase):
         """Проверка отписки от пользователя."""
         Follow.objects.create(
             user=self.post_author,
-            author=self.post_follower)
+            author=self.post_follower,
+        )
         self.follower_client.post(
             reverse(
                 'posts:profile_unfollow',

@@ -5,26 +5,21 @@
 {% block content %}
     <div class="card bg-light" style="width: 100%">
         <div class="card-body">
-            <h1 class="card-title">Все посты пользователя 
+            <h1 class="card-title">Все посты пользователя
                 {% if author.get_full_name %}
                     {{ author.get_full_name }}
                 {% else %}
                     {{ author }}
-                {% endif %}</h1>
+                {% endif %}
+            </h1>
             <h3 class="card-text">Всего постов: {{ page_obj.paginator.count }}</h3>
                 {% if request.user != author %}
                     {% if following %}
-                        <a
-                            class="btn btn-lg btn-light"
-                            href="{% url 'posts:profile_unfollow' author.username %}" role="button"
-                            >
+                        <a class="btn btn-lg btn-light" href="{% url 'posts:profile_unfollow' author.username %}" role="button">
                             Отписаться
                         </a>
-                    {% else %}
-                        <a
-                            class="btn btn-lg btn-primary"
-                            href="{% url 'posts:profile_follow' author.username %}" role="button"
-                            >
+                        {% else %}
+                        <a class="btn btn-lg btn-primary" href="{% url 'posts:profile_follow' author.username %}" role="button">
                             Подписаться
                         </a>
                     {% endif %}
@@ -35,20 +30,20 @@
     <div class="container py-5">
         <h1>Все посты пользователя {{ author }} </h1>
         <h3>Всего постов: {{ author.posts.count }} </h3>
-        {% for post in page_obj %}
-            {% include "posts/includes/post_card.html" %}
-            <li>
-                <a href="{% url 'posts:post_detail' post.id %}">подробная информация </a>
-            </li>
-            <li>
-                {% if post.group %}
-                    <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
+            {% for post in page_obj %}
+                {% include "posts/includes/post_card.html" %}
+                <li>
+                    <a href="{% url 'posts:post_detail' post.id %}">подробная информация </a>
+                </li>
+                <li>
+                    {% if post.group %}
+                        <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
+                    {% endif %}
+                </li>
+                {% if not forloop.last %}
+                    <hr>
                 {% endif %}
-            </li>           
-            {% if not forloop.last %}
-                <hr>
-            {% endif %}
-        {% endfor %}
+            {% endfor %}
         {% include "includes/paginator.html" %}
     </div>
 {% endblock %}
