@@ -1,10 +1,9 @@
+from core.utils import paginate
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
-
-from core.utils import paginate
 from posts.forms import CommentForm, PostForm
 from posts.models import Follow, Group, Post, User
 
@@ -58,9 +57,6 @@ def profile(request: HttpRequest, username: str) -> HttpResponse:
     С информацией обо всех постах данного пользователя.
     """
     author = get_object_or_404(User, username=username)
-    following = request.user
-    if following:
-        following = author.following.filter(user=request.user).exists()
     return render(
         request,
         'posts/profile.html',
@@ -71,7 +67,6 @@ def profile(request: HttpRequest, username: str) -> HttpResponse:
                 settings.LIMIT_POSTS,
             ),
             'author': author,
-            'following': following,
         },
     )
 

@@ -26,12 +26,6 @@ class TimestampedModel(Setinfo):
         db_index=True,
         verbose_name='дата публикации',
     )
-    modified = models.DateTimeField(
-        null=True,
-        blank=True,
-        db_index=True,
-        verbose_name='дата изменения',
-    )
 
     class Meta:
         abstract = True
@@ -39,5 +33,5 @@ class TimestampedModel(Setinfo):
     def save(self, *args, **kwargs):
         """Изменяем дату после изменений если дата публикации уже есть."""
         if self.pk:
-            self.modified = timezone.now()
+            self.pub_date = timezone.now()
         return super(TimestampedModel, self).save(*args, **kwargs)

@@ -1,6 +1,5 @@
 import django.contrib.auth.views as views
 from django.urls import path
-
 from users.apps import UsersConfig
 from users.views import SignUp
 

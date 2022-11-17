@@ -1,7 +1,6 @@
-from django.urls import path
-
 from about import views
 from about.apps import AboutConfig
+from django.urls import path
 
 app_name = AboutConfig.name
 

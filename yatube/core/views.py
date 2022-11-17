@@ -1,11 +1,7 @@
 from http import HTTPStatus
 
-from django.http import (
-    HttpRequest,
-    HttpResponseForbidden,
-    HttpResponseNotFound,
-    HttpResponseServerError,
-)
+from django.http import (HttpRequest, HttpResponseForbidden,
+                         HttpResponseNotFound, HttpResponseServerError)
 from django.shortcuts import render
 
 

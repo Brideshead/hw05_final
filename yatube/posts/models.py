@@ -1,8 +1,7 @@
+from core.models import TimestampedModel
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
-
-from core.models import TimestampedModel
 
 User = get_user_model()
 

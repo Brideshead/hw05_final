@@ -8,7 +8,6 @@ from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from mixer.backend.django import mixer
-
 from posts.models import Group
 
 User = get_user_model()
